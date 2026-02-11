@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>도훈이 생일파티 초대장</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --party-red: #D63031;
+            --party-gold: #fdcb6e;
+            --party-blue: #0984e3;
+            --party-purple: #6c5ce7;
+            --party-white: #ffffff;
+            --bg-dark: #0f0c29;
+        }
+
+        body { 
+            margin: 0; padding: 0; height: 100vh; overflow: hidden;
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); 
+            font-family: 'Pretendard', sans-serif;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        /* [인트로 모션] */
+        #envelope-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 100; display: flex; flex-direction: column;
+            cursor: pointer; perspective: 1000px;
+        }
+        .env-part {
+            width: 100%; height: 50.5%;
+            background: var(--party-red);
+            display: flex; justify-content: center; align-items: center;
+            transition: transform 1.2s cubic-bezier(0.85, 0, 0.15, 1);
+            position: relative; box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        .env-top { border-bottom: 3px solid rgba(255,255,255,0.2); align-items: flex-end; transform-origin: top; }
+        .env-bottom { border-top: 3px solid rgba(255,255,255,0.2); align-items: flex-start; }
+        .env-text { color: white; font-size: 1.8rem; font-weight: bold; padding: 30px; text-align: center; line-height: 1.6; text-shadow: 0 4px 10px rgba(0,0,0,0.3); animation: pulse 1.5s infinite; }
+        .blink { animation: blinker 1s linear infinite; font-size: 1.1rem; font-weight: normal; margin-top: 10px; color: #fff; }
+
+        @keyframes blinker { 50% { opacity: 0; } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+        body.open .env-top { transform: translateY(-100%) rotateX(45deg) scaleY(1.1); }
+        body.open .env-bottom { transform: translateY(100%) rotateX(-45deg) scaleY(1.1); }
+        body.open #envelope-overlay { pointer-events: none; visibility: hidden; transition-delay: 1.2s; }
+
+        /* [메인 게임 패널] */
+        #game-stage {
+            position: relative; z-index: 10;
+            width: 90%; max-width: 450px; min-height: 550px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px; 
+            box-shadow: 0 0 30px var(--party-white);
+            backdrop-filter: blur(15px);
+            display: flex; flex-direction: column; align-items: center;
+            padding: 30px; box-sizing: border-box; text-align: center;
+            opacity: 0; transform: scale(0.5) rotate(-5deg);
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        body.open #game-stage { opacity: 1; transform: scale(1) rotate(0deg); transition-delay: 0.5s; }
+
+        #quiz-canvas { 
+            width: 100%; max-width: 320px; height: 180px; 
+            background: #1a1a2e; border-radius: 15px; 
+            margin: 15px 0; border: 2px solid var(--party-purple); 
+         }
+
+        .scene { display: none; width: 100%; flex-direction: column; align-items: center; justify-content: center; }
+        .active { display: flex; animation: bounceIn 0.6s ease; }
+
+        @keyframes bounceIn {
+            0% { opacity: 0; transform: scale(0.3); }
+            50% { opacity: 1; transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+         }
+
+        input { 
+            width: 85%; padding: 15px; border: 3px solid #dfe6e9; 
+            border-radius: 15px; font-size: 1.2rem; margin-bottom: 15px; 
+            outline: none; text-align: center; 
+          }
+
+
+        button { 
+            width: 90%; padding: 16px; background: linear-gradient(135deg, var(--party-purple), #6c5ce7); 
+            color: white; border: none; border-radius: 15px; font-weight: bold; font-size: 1.2rem; 
+            cursor: pointer; box-shadow: 0 8px 20px rgba(108, 92, 231, 0.4); margin-bottom: 10px; }
+        button:active { transform: scale(0.95); }
+        
+        /* 뒤로가기 버튼 스타일 */
+        .btn-back { 
+            background: #b2bec3; 
+            font-size: 1rem; 
+            padding: 10px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            width: 60%; margin-top: 5px; 
+           }
+        
+        .hint-img { width: 100%; max-width: 250px; border-radius: 15px; border: 3px solid var(--party-purple); margin-bottom: 15px; max-height: 250px; object-fit: cover; }
+    </style>
+</head>
+<body>
+
+    <div id="envelope-overlay" onclick="openEnvelope()">
+        <div class="env-part env-top">
+        <div class="env-text">🎂<br>초대장이 도착했습니다</div></div>
+        <div class="env-part env-bottom">
+        <div class="env-text"><div class="blink">화면을 터치해서 열어보세요!</div></div></div>
+    </div>
+
+
+    <div id="game-stage">
+        <div id="scene-2" class="scene active">
+            <h2 style="color: #4f335c; font-size: 1.8rem;">🥳도훈이 생일파티🥳</h2>
+            <p>안녕 도훈아 호호호<br>너의 생일파티 장소는<br>내가 꼭꼭 숨겨놨단다^.^</p>
+            <p>문제를 다 풀면<br>어디에서, 몇시에 만나는지<br>알 수 있겠지?💨</p>
+            <br>
+           <img src="https://i.postimg.cc/j2ZZPvbJ/Kakao-Talk-20260212-000020971.jpg" 
+                          width="300" height="400"
+                 class="hint-img purple-border" style="background:#fff;" >
+                <br>
+
+            <button onclick="nextScene(3)">도훈: 으휴;;(라고 할 거 다 앎)</button>
+        </div>
+
+
+        <div id="scene-3" class="scene">
+            <h2 style="color: var(--party-red);">📍 장소 MISSION📍</h2>
+            <p>자, 그럼 먼저<br><strong>장소</strong>부터 맞춰보쟈! <br> <br>😁참고로 힌트는 없어😁 </p>
+            <br>
+          <img src="https://search.pstatic.net/common/?src=http%3A%2F%2Fcafefiles.naver.net%2FMjAxOTExMDhfMjkg%2FMDAxNTczMTg2ODI3NDU2.dV6mZnv0-IYYH1vR_YZ6QVsyUhjiBRgef33TovmzT2cg.cvLdnTyBCzQcXInHqyIVxmUkr2j_rvbybGaN2fbWE6cg.JPEG%2FIMG_6544.jpg&type=sc960_832" 
+                 class="hint-img purple-border" style="background:#fff;">
+               <br>
+
+
+            <button onclick="nextScene(4)">Let`go!</button>
+            <button class="btn-back" onclick="nextScene(2)">뒤로가기</button>
+        </div>
+
+        <div id="quiz-area" class="scene">
+            <h3 id="stage-title" style="color: var(--party-red);">[ MISSION ]</h3>
+            <div id="img-container"></div>
+            <canvas id="quiz-canvas"></canvas>
+            <input type="text" id="answer-input" placeholder="정답을 입력하세요!" onkeypress="handleKeyPress(event)">
+            <button onclick="checkAnswer()">정답 확인</button>
+            <button id="dynamic-back-btn" class="btn-back" onclick="goBack()">뒤로가기</button>
+        </div>
+
+        <div id="scene-8" class="scene">
+            <h3 style="color: #27ae60;">🎉 츄카츄카츄! 🎉</h3>
+            <p>마쟈 장소는 바로 여기야!<br>빨리 알아냈구만!</p>
+            <img src="https://search.pstatic.net/common/?src=http%3A%2F%2Fblogfiles.naver.net%2FMjAyNDAxMTdfMjI1%2FMDAxNzA1NDg5MjUwOTgy.FMPCt-cp-jK2Ly-TjiTVIdLtA0_ToPAN9IOfCOr_lQAg.FvGkqLFIJBzF_kbQVTBJ4QfVyQ-DCzcKjmrYwbvSom0g.JPEG.dasol706%2FIMG_9951.JPG&type=sc960_832" class="hint-img">
+            <p>자, 그럼 다음은 <strong>시간</strong>을 맞춰보자^.^</p>
+            <button onclick="nextScene(9)">Let`s go!</button>
+            <button class="btn-back" onclick="nextScene(7)">뒤로가기</button>
+        </div>
+
+        <div id="scene-10" class="scene">
+            <h3 style="color: #6c5ce7;">🏆MISSON COMPLETE🏆</h2>
+            <br>
+            <div style="background: #F7EDE3; padding: 20px; border-radius: 20px; border: 3px dashed #7E6F82; width: 100%; box-sizing: border-box; margin-bottom: 15px;">
+                <p style="margin: 0; font-size: 1.1rem; font-weight: bold; line-height:1.6;">
+                    장소와 시간을 모두 맞췄네 도후니<br>맞아 그 장소에서 그 시간에 보면 돼.<br>그럼 이따 보자!<br>
+<br> 
+<img src="https://search.pstatic.net/common/?src=http%3A%2F%2Fblogfiles.naver.net%2FMjAyNDAxMTNfMzAw%2FMDAxNzA1MTQ0MTY1NjIy.QjDgPcdzz1oLLFAP_7mwQNY2kNKZ3O0uYLjIausb2z8g.XF4b9bigVzhtcMrfVpxjoEV9i5bLz51XEkq-UdiLS5kg.JPEG.ottff123%2FIMG_5216.JPG&type=sc960_832"   class="hint-img purple-border" width="300" height="400" >
+<br>
+                      <br>
+                    <span style="font-size: 1.5rem; color: #3B7D23;">🎂 생일 축하해 도훈아! 🎂</span>
+  
+
+                </p>
+            </div>
+            <button class="btn-back" onclick="nextScene(9)">끝!</button>
+        </div>
+    </div>
+
+    <script>
+         // --- 파티 효과 로직 ---
+        function startContinuousParty() {
+            const duration = 15 * 1000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+            function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+            const interval = setInterval(function() {
+                const timeLeft = animationEnd - Date.now();
+                if (timeLeft <= 0) return clearInterval(interval);
+
+                const particleCount = 50 * (timeLeft / duration);
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+             
+        function openEnvelope() {
+            document.body.classList.add('open');
+      
+          // 열리는 순간 화려한 팡파레
+            const end = Date.now() + (2 * 1000);
+            const colors = ['#bb0000', '#ffffff', '#fdcb6e', '#0984e3'];
+
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: colors });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: colors });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+            
+            startContinuousParty();
+        }
+
+      
+        const quizData = {
+            4: { title: "🧩문제 1🧩", q: "대한민국=2, 중국=3\n러시아=4, 미국=5\n그렇다면 일본은?", a: "2" },
+            5: { title: "🗼문제 2🗼", q: "문제 1을 한글로 하면?", a: "도쿄" },
+            6: { title: "🕵️문제 3🕵️", q: "사진 속 인물의\n직업은 무엇일까요?", a: "시장", img: "https://i.namu.wiki/i/CdneRTgAiJnI_SQVhB_CeKvZVAly2hyKCYB4L4sIuTwFMCpNI6B6GOqKTEWD8NWCuADZE10pCEfLngLhzVrHMCqxtvu9_zHMpHdkGF6-gzRYJ_ePMfLox3hubSlXBKlKHBzxfRzhRit9eVRI2QoorQ.webp"  },
+            7: { title: "🍻문제 4🍻", q: "문제 2번과 문제 3번의\n정답을 합치면?", a: "도쿄시장" },
+            9: { title: "❓문제 5❓", q: "물음표(?)에 들어갈\n정답은 무엇일까요?", a: "팔",img: "https://i.postimg.cc/90KcmdnX/Kakao-Talk-20260210-010237221.jpg" }
+        };
+
+        let currentStep = 2;
+
+        function openEnvelope() {
+            document.body.classList.add('open');
+
+
+             // 열리는 순간 화려한 팡파레
+            const end = Date.now() + (2 * 1000);
+            const colors = ['#bb0000', '#ffffff', '#fdcb6e', '#0984e3'];
+
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: colors });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: colors });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+            
+            startContinuousParty();
+        }
+
+
+        function nextScene(step) {
+            currentStep = step;
+            document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+            
+            if (quizData[step]) {
+                document.getElementById('quiz-area').classList.add('active');
+                loadQuiz(step);
+            } else {
+                const target = document.getElementById('scene-' + step);
+                if(target) target.classList.add('active');
+                if (step === 10) startFinalCelebration();
+            }
+        }
+
+        function goBack() {
+            // 퀴즈 영역에서 뒤로갈 때
+            if (currentStep === 4) nextScene(3);
+            else nextScene(currentStep - 1);
+        }
+
+        function loadQuiz(step) {
+            const data = quizData[step];
+            document.getElementById('stage-title').innerText = `[ ${data.title} ]`;
+            const imgCont = document.getElementById('img-container');
+            imgCont.innerHTML = data.img ? `<img src="${data.img}" class="hint-img">` : "";
+            
+            const cvs = document.getElementById('quiz-canvas');
+            const ctx = cvs.getContext('2d');
+            cvs.width = 320; cvs.height = 160;
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            ctx.fillStyle = "#fff"; ctx.font = "bold 18px Pretendard"; ctx.textAlign = "center";
+            ctx.font = "bold 20px Pretendard, sans-serif"; 
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            
+            const lines = data.q.split('\n');
+            lines.forEach((line, i) => {
+                ctx.fillText(line, cvs.width/2, (cvs.height/2 - (lines.length-1)*15) + (i*30));
+            });
+            document.getElementById('answer-input').value = "";
+            document.getElementById('answer-input').focus();
+        }
+
+        function checkAnswer() {
+            const val = document.getElementById('answer-input').value.trim().replace(/\s/g, '');
+            if (val === quizData[currentStep].a) {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                nextScene(currentStep + 1);
+            } else {
+                alert("땡! 다시 생각해보렴! 🤪");
+            }
+        }
+
+        function handleKeyPress(e) { if (e.key === "Enter") checkAnswer(); }
+
+        function startFinalCelebration() {
+            const duration = 15 * 1000;
+            const end = Date.now() + duration;
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff0000', '#ffaa00'] });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#00aaff', '#ff00ff'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+    </script>
+</body>
+</html>
